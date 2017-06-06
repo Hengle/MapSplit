@@ -440,7 +440,29 @@ public class MapSplitWindows : EditorWindow
                 EditorUtility.DisplayDialog("提示", "该区域块不是封闭的！", "确定");
                 return;
             }
-
+            
+            bool[] IsObtuse = new bool[lineVertices.Count - 1];
+            for (int i = 0; i < lineVertices.Count - 1; ++i)
+            {
+                Vector3 a = lineVertices[(i + lineVertices.Count - 2) % (lineVertices.Count - 1)].transform.position - lineVertices[i].transform.position;
+                Vector3 b = lineVertices[(i + 1) % (lineVertices.Count - 1)].transform.position - lineVertices[i].transform.position;
+                if (Vector3.Cross(a.normalized, b.normalized).y > 0)
+                {
+                    IsObtuse[i] = true;
+                }
+                else
+                {
+                    IsObtuse[i] = false;
+                }
+            }
+            for (int i = 0; i < IsObtuse.Length; ++i)
+            {
+                if (IsObtuse[i] && IsObtuse[(i + 1) % IsObtuse.Length])
+                {
+                    EditorUtility.DisplayDialog("提示", "区域块中存在相邻的凹点， 请重新编辑！", "确定");
+                }
+            }
+            
             GameObject line = new GameObject();
             LineRenderer _lineRenderer = line.AddComponent<LineRenderer>();
             _lineRenderer.material = new Material(Shader.Find("Particles/Additive"));
@@ -457,8 +479,9 @@ public class MapSplitWindows : EditorWindow
 
             for (int i = 0; i < lineVertices.Count; ++i)
             {
-                _lineRenderer.SetPosition(i, lineVertices[i].transform.position);
-                newBlock.linePosList.Add(lineVertices[i].transform.position);
+                Vector3 position = new Vector3((float)Math.Round(lineVertices[i].transform.position.x, 2), (float)Math.Round(lineVertices[i].transform.position.y, 2), (float)Math.Round(lineVertices[i].transform.position.z, 2));
+                _lineRenderer.SetPosition(i, position);
+                newBlock.linePosList.Add(position);
             }
             blockList.Add(newBlock);
 
@@ -552,12 +575,14 @@ public class MapSplitWindows : EditorWindow
 
             for (int i = 0; i < vertices.Length; ++i)
             {
-                _lineRenderer.SetPosition(i, vertices[i]);
-                newBlock.linePosList.Add(vertices[i]);
+                Vector3 position = new Vector3((float)Math.Round(vertices[i].x, 2), (float)Math.Round(vertices[i].y, 2), (float)Math.Round(vertices[i].z, 2));
+                _lineRenderer.SetPosition(i, position);
+                newBlock.linePosList.Add(position);
             }
 
-            _lineRenderer.SetPosition(vertices.Length, vertices[0]);
-            newBlock.linePosList.Add(vertices[0]);
+            Vector3 pos_0 = new Vector3((float)Math.Round(vertices[0].x, 2), (float)Math.Round(vertices[0].y, 2), (float)Math.Round(vertices[0].z, 2));
+            _lineRenderer.SetPosition(vertices.Length, pos_0);
+            newBlock.linePosList.Add(pos_0);
 
             blockList.Add(newBlock);
 
@@ -678,6 +703,12 @@ public class MapSplitWindows : EditorWindow
                     }
                     else
                     {
+                        if (Math.Abs(idx - lastIdx) == 1)
+                        {
+                            LogMgr.LogError("区域块中存在相邻的凹点！");
+                            break;
+                        }
+                        
                         Vector3 a = list[(lastIdx - 1) % (list.Count - 1)] - list[lastIdx];
                         Vector3 b = list[idx] - list[lastIdx];
                         if (Vector3.Cross(a.normalized, b.normalized).y > 0)
