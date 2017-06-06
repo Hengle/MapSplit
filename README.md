@@ -1,2 +1,3 @@
 # MapSplit
-generate regional segmentation map
+生成地图区域块
+bug: 无法处理存在两个相邻且角度大于180的顶点的区域块
