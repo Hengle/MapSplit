@@ -441,27 +441,28 @@ public class MapSplitWindows : EditorWindow
                 return;
             }
             
-            bool[] IsObtuse = new bool[lineVertices.Count - 1];
-            for (int i = 0; i < lineVertices.Count - 1; ++i)
-            {
-                Vector3 a = lineVertices[(i + lineVertices.Count - 2) % (lineVertices.Count - 1)].transform.position - lineVertices[i].transform.position;
-                Vector3 b = lineVertices[(i + 1) % (lineVertices.Count - 1)].transform.position - lineVertices[i].transform.position;
-                if (Vector3.Cross(a.normalized, b.normalized).y > 0)
-                {
-                    IsObtuse[i] = true;
-                }
-                else
-                {
-                    IsObtuse[i] = false;
-                }
-            }
-            for (int i = 0; i < IsObtuse.Length; ++i)
-            {
-                if (IsObtuse[i] && IsObtuse[(i + 1) % IsObtuse.Length])
-                {
-                    EditorUtility.DisplayDialog("提示", "区域块中存在相邻的凹点， 请重新编辑！", "确定");
-                }
-            }
+            //判断是否存在相邻的凹点
+            //bool[] IsObtuse = new bool[lineVertices.Count - 1];
+            //for (int i = 0; i < lineVertices.Count - 1; ++i)
+            //{
+            //    Vector3 a = lineVertices[(i + lineVertices.Count - 2) % (lineVertices.Count - 1)].transform.position - lineVertices[i].transform.position;
+            //    Vector3 b = lineVertices[(i + 1) % (lineVertices.Count - 1)].transform.position - lineVertices[i].transform.position;
+            //    if (Vector3.Cross(a.normalized, b.normalized).y > 0)
+            //    {
+            //        IsObtuse[i] = true;
+            //    }
+            //    else
+            //    {
+            //        IsObtuse[i] = false;
+            //    }
+            //}
+            //for (int i = 0; i < IsObtuse.Length; ++i)
+            //{
+            //    if (IsObtuse[i] && IsObtuse[(i + 1) % IsObtuse.Length])
+            //    {
+            //        EditorUtility.DisplayDialog("提示", "区域块中存在相邻的凹点， 请重新编辑！", "确定");
+            //    }
+            //}
             
             GameObject line = new GameObject();
             LineRenderer _lineRenderer = line.AddComponent<LineRenderer>();
@@ -701,14 +702,38 @@ public class MapSplitWindows : EditorWindow
                     {
                         lastIdx = idx;
                     }
+                    else if (Math.Abs(idx - lastIdx) == 1) //相邻凹点处理
+                    {
+                        LogMgr.LogError("区域块中存在相邻的凹点！");
+                        if (vlist.Count == 1) //连续两个凹点，则移除并重置第一个凹点
+                        {
+                            IsObtuse[lastIdx] = true;
+                            vlist.Clear();
+                            flagCnt = 1;
+                            lastIdx = idx;
+                        }
+                        else if(queue.Count == 2) //第二个凹点是绕了一圈后的点，理论上来说queue.Count = 2，这里就是加个保护
+                        {
+                            Vector3 a = list[idx] - list[lastIdx];
+                            Vector3 b = list[(lastIdx + 2) % (list.Count - 1)] - list[lastIdx];
+                            if (Vector3.Cross(a.normalized, b.normalized).y > 0)
+                            {
+                                IsObtuse[lastIdx] = true;
+                            }
+                            IsObtuse[idx] = true;
+                            
+                            int aver = vlist[1];
+                            int bver = vlist[2];
+                            vlist.RemoveAt(1);
+
+                            queue.Clear();
+                            queue.Enqueue(lastIdx);
+                            queue.Enqueue(aver);
+                            queue.Enqueue(bver);
+                        }
+                    }
                     else
                     {
-                        if (Math.Abs(idx - lastIdx) == 1)
-                        {
-                            LogMgr.LogError("区域块中存在相邻的凹点！");
-                            break;
-                        }
-                        
                         Vector3 a = list[(lastIdx - 1) % (list.Count - 1)] - list[lastIdx];
                         Vector3 b = list[idx] - list[lastIdx];
                         if (Vector3.Cross(a.normalized, b.normalized).y > 0)
